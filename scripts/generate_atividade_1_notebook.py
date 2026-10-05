@@ -1,6 +1,12 @@
 import nbformat as nbf
 import os
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+
 from nbclient import NotebookClient
+from nbconvert import HTMLExporter
 
 ALUNO_NOME = "Nome do Aluno"
 ALUNO_MATRICULA = "00000000"
@@ -38,6 +44,55 @@ def custom_markdown(text):
     for original, configured in replacements.items():
         text = text.replace(original, configured)
     return text
+
+
+def find_browser():
+    """Localiza Edge ou Chrome para realizar a impressão silenciosa em PDF."""
+    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+    candidates = [
+        shutil.which("msedge"),
+        shutil.which("chrome"),
+        Path(program_files_x86) / "Microsoft/Edge/Application/msedge.exe",
+        Path(program_files) / "Microsoft/Edge/Application/msedge.exe",
+        Path(program_files) / "Google/Chrome/Application/chrome.exe",
+        Path(program_files_x86) / "Google/Chrome/Application/chrome.exe",
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).is_file():
+            return Path(candidate)
+    raise FileNotFoundError(
+        "Microsoft Edge ou Google Chrome não foi encontrado. "
+        "Instale um deles para gerar o PDF automaticamente."
+    )
+
+
+def export_notebook_to_pdf(notebook, pdf_path):
+    """Converte o notebook executado para PDF sem manter um HTML intermediário."""
+    pdf_path = Path(pdf_path).resolve()
+    html, _ = HTMLExporter().from_notebook_node(notebook)
+
+    with tempfile.TemporaryDirectory(prefix="atividade_1_pdf_") as temp_dir:
+        temp_path = Path(temp_dir)
+        html_path = temp_path / "atividade_1.html"
+        profile_path = temp_path / "browser_profile"
+        html_path.write_text(html, encoding="utf-8")
+
+        command = [
+            str(find_browser()),
+            "--headless=new",
+            "--disable-gpu",
+            "--no-pdf-header-footer",
+            "--allow-file-access-from-files",
+            "--virtual-time-budget=5000",
+            f"--user-data-dir={profile_path}",
+            f"--print-to-pdf={pdf_path}",
+            html_path.resolve().as_uri(),
+        ]
+        subprocess.run(command, check=True, capture_output=True, text=True, timeout=120)
+
+    if not pdf_path.is_file() or pdf_path.stat().st_size == 0:
+        raise RuntimeError(f"O navegador não conseguiu gerar o PDF: {pdf_path}")
 
 
 def create_and_run_complete_notebook():
@@ -861,7 +916,11 @@ A experimentação sistemática da quantização em diferentes profundidades de 
     with open(nb_path, "w", encoding="utf-8") as f:
         nbf.write(nb, f)
     
-    print("Notebook da Atividade 1 executado e salvo como Atividade_1_PDI.ipynb!")
+    pdf_path = "Atividade_1_PDI.pdf"
+    print("Gerando o PDF da Atividade 1...")
+    export_notebook_to_pdf(nb, pdf_path)
+    print(f"Notebook gerado: {nb_path}")
+    print(f"PDF gerado: {pdf_path}")
 
 if __name__ == "__main__":
     create_and_run_complete_notebook()

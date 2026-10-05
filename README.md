@@ -57,12 +57,20 @@ uv run jupyter lab
 uv run jupyter notebook
 ```
 
-### 3. Exportar o Notebook para HTML / PDF
+### 3. Gerar o Notebook e o PDF
+
+O gerador executa todas as células e cria automaticamente o notebook e sua
+versão em PDF. É necessário ter Microsoft Edge ou Google Chrome instalado.
+
+### Gerar uma versão individual editável
+
+Abra `scripts/generate_atividade_1_notebook.py`. 
+
 ```bash
-# Exporta para HTML com todos os gráficos renderizados
-uv run jupyter nbconvert --to html Atividade_1_PDI.ipynb
+uv run python scripts/generate_atividade_1_notebook.py
 ```
-> **Dica para PDF:** Abra o arquivo `Atividade_1_PDI.html` no navegador (Chrome/Edge), pressione `Ctrl + P` e selecione **"Salvar como PDF"**.
+
+O script cria somente `Atividade_1_PDI.ipynb` e `Atividade_1_PDI.pdf`
 
 ---
 
