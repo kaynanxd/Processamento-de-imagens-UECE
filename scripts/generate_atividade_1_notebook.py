@@ -264,6 +264,13 @@ display_sketch_results(img2, __IMG2_TITLE__)
 display_sketch_results(img3, __IMG3_TITLE__)
 """)))
 
+    cells.append(nbf.v4.new_markdown_cell(f"""### 1.5. Análise dos Resultados
+
+Nos testes com **{IMAGEM_1[2]}**, **{IMAGEM_2[2]}** e **{IMAGEM_3[2]}**, a conversão para níveis de cinza preservou as principais variações de luminância das imagens. O filtro gaussiano com máscara de $21 \\times 21$ suavizou detalhes pequenos e reduziu variações locais, criando uma referência de baixa frequência para a etapa de divisão.
+
+Após a divisão entre a imagem em níveis de cinza e sua versão desfocada, as regiões homogêneas ficaram próximas do branco, enquanto mudanças mais acentuadas de intensidade foram destacadas como traços escuros. As diferenças entre os três resultados mostram que imagens com maior contraste e mais texturas produzem esboços com maior quantidade de linhas, enquanto superfícies uniformes geram áreas mais limpas. Assim, o efeito final depende diretamente das bordas, texturas e condições de iluminação presentes na imagem original.
+"""))
+
     # =========================================================================
     # QUESTAO 2: CORREÇÃO GAMA
     # =========================================================================
@@ -360,6 +367,13 @@ display_gamma_comparisons(img_cake1, __IMG1_TITLE__)
 display_gamma_comparisons(img_cake2, __IMG2_TITLE__)
 """)))
 
+    cells.append(nbf.v4.new_markdown_cell(f"""### 2.5. Análise dos Resultados
+
+Nas imagens **{IMAGEM_1[2]}** e **{IMAGEM_2[2]}**, os valores de γ menores que 1 comprimiram os tons médios e claros, produzindo imagens mais escuras. Em sentido oposto, valores de γ maiores que 1 expandiram os tons de baixa intensidade e revelaram mais detalhes nas regiões de sombra. Para γ igual a 1, a transformação funcionou como identidade e preservou as intensidades da imagem original.
+
+Os histogramas confirmam esse comportamento: nos casos de escurecimento, a distribuição se deslocou em direção às menores intensidades; nos casos de clareamento, ocorreu um deslocamento em direção aos níveis mais altos. Isso mostra que a correção gama permite controlar o brilho de maneira não linear, modificando principalmente os tons intermediários sem exigir uma alteração uniforme em todos os pixels.
+"""))
+
     # =========================================================================
     # QUESTAO 3: COMBINAÇÃO PONDERADA DE DUAS IMAGENS (IMAGE BLENDING)
     # =========================================================================
@@ -455,6 +469,13 @@ path_cake_b = os.path.join("Images", __IMG3_FOLDER__, __IMG3_FILE__)
 display_weighted_blend_sequence(path_cake_a, __IMG1_TITLE__, path_cake_b, __IMG3_TITLE__)
 """)))
 
+    cells.append(nbf.v4.new_markdown_cell(f"""### 3.5. Análise dos Resultados
+
+A sequência entre **{IMAGEM_1[2]}** e **{IMAGEM_3[2]}** apresentou uma transição gradual conforme o valor de alpha foi alterado. Com alpha igual a 1, somente a primeira imagem permaneceu visível; com alpha igual a 0, o resultado correspondeu integralmente à segunda. Nos valores intermediários, características das duas imagens apareceram simultaneamente em diferentes proporções.
+
+O caso alpha igual a 0,5 produziu uma contribuição equilibrada de 50% de cada entrada. Como os pesos são complementares e somam 1, a combinação preservou a faixa válida de intensidades, sem provocar estouro dos valores. O experimento evidencia que a média ponderada pode ser utilizada para criar transições suaves e controlar diretamente a influência visual de cada imagem no resultado.
+"""))
+
     # =========================================================================
     # QUESTAO 4: TRANSFORMAÇÕES ESPACIAIS E DE INTENSIDADES
     # =========================================================================
@@ -543,6 +564,13 @@ def display_question_4_results(image_path: str, cake_title: str):
 img_q4_1 = os.path.join("Images", __IMG1_FOLDER__, __IMG1_FILE__)
 display_question_4_results(img_q4_1, __IMG1_TITLE__)
 """)))
+
+    cells.append(nbf.v4.new_markdown_cell(f"""### 4.5. Análise dos Resultados
+
+As transformações aplicadas à imagem **{IMAGEM_1[2]}** produziram efeitos distintos. O negativo inverteu completamente a relação entre regiões claras e escuras. O mapeamento para o intervalo `[100, 200]` preservou a organização da imagem, mas reduziu seu contraste ao eliminar os extremos preto e branco. A inversão horizontal somente das linhas pares criou descontinuidades alternadas, evidenciando a manipulação seletiva das coordenadas espaciais.
+
+No espelhamento da metade superior, essa região foi refletida sobre a metade inferior, produzindo simetria em relação ao eixo horizontal central. Já o espelhamento vertical total apenas inverteu a ordem de todas as linhas, mantendo formas e intensidades, mas trocando as posições superior e inferior. Os resultados confirmam a diferença entre transformações de intensidade, que modificam os valores dos pixels, e transformações geométricas, que reorganizam suas posições.
+"""))
 
     # =========================================================================
     # QUESTAO 5: MOSAICO 4x4
@@ -664,6 +692,13 @@ def display_mosaic_analysis(image_path: str, cake_title: str, layout: list = MOS
 img_q5_1 = os.path.join("Images", __IMG1_FOLDER__, __IMG1_FILE__)
 display_mosaic_analysis(img_q5_1, __IMG1_TITLE__)
 """)))
+
+    cells.append(nbf.v4.new_markdown_cell(f"""### 5.5. Análise dos Resultados
+
+A imagem **{IMAGEM_1[2]}** foi dividida em 16 blocos de mesmas dimensões e reorganizada exatamente conforme a ordem indicada na figura (c). O resultado preserva o conteúdo e os níveis de cinza de cada bloco, alterando somente sua posição espacial. Por isso, eventuais regiões claras ou descontinuidades observadas no mosaico pertencem aos próprios blocos da imagem original e não representam perda de informação.
+
+A reconstrução inversa recuperou visualmente a disposição original, confirmando que a operação é uma permutação reversível. Como nenhum valor de pixel é modificado durante a troca de posições, a montagem e a reconstrução são realizadas sem perdas para imagens cujas dimensões são divisíveis por quatro, como as amostras utilizadas neste trabalho.
+"""))
 
     # =========================================================================
     # QUESTAO 6: QUANTIZAÇÃO DE NÍVEIS DE CINZA
