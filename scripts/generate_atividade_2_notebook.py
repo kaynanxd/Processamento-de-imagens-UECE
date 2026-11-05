@@ -33,6 +33,12 @@ def find_browser():
     candidates = [
         shutil.which("msedge"),
         shutil.which("chrome"),
+        shutil.which("google-chrome"),
+        shutil.which("google-chrome-stable"),
+        shutil.which("chromium"),
+        shutil.which("chromium-browser"),
+        shutil.which("brave"),
+        shutil.which("brave-browser"),
         Path(program_files_x86) / "Microsoft/Edge/Application/msedge.exe",
         Path(program_files) / "Microsoft/Edge/Application/msedge.exe",
         Path(program_files) / "Google/Chrome/Application/chrome.exe",
@@ -125,7 +131,7 @@ def load_image(path: str, size=(512, 512)) -> np.ndarray:
     if img_bgr is None:
         raise FileNotFoundError(f"Imagem não encontrada: {path}")
     if size is not None:
-        img_bgr = cv2.resize(img_bgr, size, interpolation=cv2.INTER_AREA)
+        assert img_bgr.shape[:2] == size
     return rgb2gray(img_bgr)
 """))
 
