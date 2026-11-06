@@ -8,8 +8,8 @@ from pathlib import Path
 from nbclient import NotebookClient
 from nbconvert import HTMLExporter
 
-ALUNO_NOME = "Nome do Aluno"
-ALUNO_MATRICULA = "00000000"
+ALUNO_NOME = "Nome do aluno"
+ALUNO_MATRICULA = "000000"
 
 IMAGEM_1 = ("STRAWBERRY MOUSSE CAKE", "03.jpg", "STRAWBERRY MOUSSE CAKE")
 
@@ -58,24 +58,78 @@ def export_notebook_to_pdf(notebook, pdf_path):
     pdf_path = Path(pdf_path).resolve()
     html, _ = HTMLExporter().from_notebook_node(notebook)
 
+    # Força o MathJax a renderizar fórmulas como vetores SVG (sem depender de webfonts externos)
+    html = html.replace('config=TeX-AMS_CHTML-full,Safe', 'config=TeX-AMS_SVG')
+
+    custom_css = """
+<style>
+  @page {
+    margin: 1.2cm 1.5cm 1.2cm 1.5cm;
+    size: A4 portrait;
+  }
+  body, .jp-Notebook {
+    padding: 0 !important;
+    margin: 0 !important;
+    background-color: #ffffff !important;
+  }
+  .jp-Cell {
+    margin-bottom: 12px !important;
+  }
+  .jp-InputArea, .jp-InputArea-editor {
+    overflow: visible !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  pre, code, .highlight, .highlight pre, .jp-CodeCell pre, .jp-InputArea-editor pre {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    font-size: 8.5pt !important;
+    line-height: 1.3 !important;
+  }
+  .jp-RenderedImage img, img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    margin: 8px auto !important;
+    box-sizing: border-box !important;
+  }
+  .jp-Cell-inputWrapper {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .jp-OutputArea-child {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .MathJax_SVG_Display {
+    margin: 0.5em auto !important;
+  }
+</style>
+"""
+    if "</head>" in html:
+        html = html.replace("</head>", custom_css + "\n</head>")
+    else:
+        html = custom_css + html
+
     with tempfile.TemporaryDirectory(prefix="atividade_2_pdf_") as temp_dir:
         temp_path = Path(temp_dir)
         html_path = temp_path / "atividade_2.html"
-        profile_path = temp_path / "browser_profile"
         html_path.write_text(html, encoding="utf-8")
 
         command = [
             str(find_browser()),
-            "--headless=new",
+            "--headless",
             "--disable-gpu",
+            "--no-sandbox",
             "--no-pdf-header-footer",
             "--allow-file-access-from-files",
-            "--virtual-time-budget=5000",
-            f"--user-data-dir={profile_path}",
+            "--run-all-compositor-stages-before-draw",
+            "--virtual-time-budget=6000",
             f"--print-to-pdf={pdf_path}",
             html_path.resolve().as_uri(),
         ]
-        subprocess.run(command, check=True, capture_output=True, text=True, timeout=180)
+        subprocess.run(command, check=True, capture_output=True, text=True, timeout=120)
 
     if not pdf_path.is_file() or pdf_path.stat().st_size == 0:
         raise RuntimeError(f"O navegador não conseguiu gerar o PDF: {pdf_path}")
@@ -91,17 +145,16 @@ def create_and_run_complete_notebook():
     cells.append(nbf.v4.new_markdown_cell(f"""# Processamento Digital de Imagens (PDI)
 ## Atividade 2: Transformações no Domínio Espacial e da Frequência
 
-**Aluno(a):** {ALUNO_NOME}  
-**Matrícula:** {ALUNO_MATRICULA}  
-**Data de Entrega:** 29/10  
+**Aluno(a):** {ALUNO_NOME} 
+**Matrícula:** {ALUNO_MATRICULA}
 **Tema do Trabalho Final:** Gastronomia
 
 ---
 
 ### Diretrizes e Regras Gerais
-* **OpenCV (`cv2`):** Utilizado apenas para carregar (`cv2.imread`) e salvar imagens.
-* **Implementações Manuais:** Todas as operações espaciais (convolução 2D, tratamento de bordas e filtros $h_1$ a $h_{11}$) e máscaras de frequência foram implementadas manualmente com **NumPy**.
-* **FFT:** Conforme autorizado, a Transformada Rápida de Fourier foi calculada com a biblioteca padrão `numpy.fft`.
+* **OpenCV:** Utilizado apenas para carregar cv2.imread e salvar imagens.
+* **Implementações Manuais:** Todas as operações espaciais (convolução 2D, tratamento de bordas e filtros) e máscaras de frequência foram implementadas manualmente com NumPy.
+* **FFT:** Conforme autorizado, a Transformada Rápida de Fourier foi calculada com a biblioteca padrão numpy.fft.
 """))
 
     # =========================================================================
@@ -119,14 +172,12 @@ plt.rcParams['font.size'] = 9
 plt.rcParams['image.cmap'] = 'gray'
 
 def rgb2gray(img_bgr: np.ndarray) -> np.ndarray:
-    \"\"\"Conversão manual BGR para níveis de cinza (ITU-R BT.601).\"\"\"
     if img_bgr.ndim == 2:
         return img_bgr.copy()
     b, g, r = img_bgr[:, :, 0], img_bgr[:, :, 1], img_bgr[:, :, 2]
     return np.clip(0.299 * r + 0.587 * g + 0.114 * b, 0, 255).astype(np.uint8)
 
 def load_image(path: str, size=(512, 512)) -> np.ndarray:
-    \"\"\"Carrega a imagem e converte para tons de cinza com tamanho padronizado.\"\"\"
     img_bgr = cv2.imread(path)
     if img_bgr is None:
         raise FileNotFoundError(f"Imagem não encontrada: {path}")
@@ -139,13 +190,13 @@ def load_image(path: str, size=(512, 512)) -> np.ndarray:
     # 1. QUESTÃO 1 - INTRODUÇÃO CONCISA
     # =========================================================================
     cells.append(nbf.v4.new_markdown_cell(r"""---
-## 1. Questão 1 — Filtragem no Domínio Espacial (Kernels $h_1$ a $h_{11}$)
+## 1. Questão 1, Filtragem no Domínio Espacial (Kernels $h_1$ a $h_{11}$)
 
-A filtragem espacial linear calcula o novo valor de cada pixel por meio da convolução discreta bidimensional com uma máscara $w$ de tamanho $m \times n$:
+A filtragem espacial linear calcula o novo valor de cada pixel por meio da convolução discreta bidimensional com uma máscara w de tamanho m x n:
 
 $$g(x, y) = \sum_{s=-a}^{a} \sum_{t=-b}^{b} w(s, t) \, f(x - s, y - t)$$
 
-Para matrizes com coeficientes negativos (derivativos), a saída foi normalizada linearmente em $[0, 255]$ para visualização adequada das bordas e transições.
+Para matrizes com coeficientes negativos (derivativos), a saída foi normalizada linearmente em [0, 255] para visualização adequada das bordas e transições.
 """))
 
     # =========================================================================
@@ -154,10 +205,6 @@ Para matrizes com coeficientes negativos (derivativos), a saída foi normalizada
     cells.append(nbf.v4.new_code_cell("""# 1.1 Convolução 2D Manual e Definição dos Kernels h1 a h11
 
 def convolve2d_manual(image: np.ndarray, kernel: np.ndarray, normalize: bool = False) -> np.ndarray:
-    \"\"\"
-    Executa a convolução discreta 2D manual com padding reflexivo nas bordas.
-    Inverte o kernel em 180° (convolução matemática estrita).
-    \"\"\"
     k_h, k_w = kernel.shape
     pad_h, pad_w = k_h // 2, k_w // 2
     img_padded = np.pad(image.astype(np.float64), ((pad_h, pad_h), (pad_w, pad_w)), mode='reflect')
@@ -176,7 +223,6 @@ def convolve2d_manual(image: np.ndarray, kernel: np.ndarray, normalize: bool = F
         return np.zeros_like(image, dtype=np.uint8)
     return np.clip(np.round(output), 0, 255).astype(np.uint8)
 
-# Dicionário com os 11 kernels descritos no enunciado
 kernels = {
     "h1": (np.array([[0,0,-1,0,0],[0,-1,-2,-1,0],[-1,-2,16,-2,-1],[0,-1,-2,-1,0],[0,0,-1,0,0]]), True, "Laplaciano 5x5"),
     "h2": ((1/256) * np.array([[1,4,6,4,1],[4,16,24,16,4],[6,24,36,24,6],[4,16,24,16,4],[1,4,6,4,1]]), False, "Gaussiano 5x5"),
@@ -200,10 +246,9 @@ kernels = {
 img_cake1_path = os.path.join("Images", __IMG1_FOLDER__, __IMG1_FILE__)
 img_cake1 = load_image(img_cake1_path)
 
-# Executa todos os filtros
 results_h = {k: convolve2d_manual(img_cake1, data[0], normalize=data[1]) for k, data in kernels.items()}
 
-# Exibição compacta em grade 4x3 (Original + 11 filtros)
+# Exibição em grade
 fig, axes = plt.subplots(4, 3, figsize=(15, 18))
 axes = axes.flatten()
 
@@ -216,7 +261,7 @@ for idx, (k, data) in enumerate(kernels.items(), start=1):
     axes[idx].set_title(f"{k}: {data[2]}", fontweight='bold')
     axes[idx].axis('off')
 
-plt.suptitle(f"Questão 1 — Resultados dos Filtros Espaciais $h_1$ a $h_{{11}}$", fontsize=14, fontweight='bold', y=0.995)
+plt.suptitle(f"Questão 1, Resultados dos Filtros Espaciais $h_1$ a $h_{{11}}$", fontsize=14, fontweight='bold', y=0.995)
 plt.tight_layout()
 plt.show()
 """)))
@@ -245,16 +290,16 @@ plt.show()
     # 2. QUESTÃO 2 - INTRODUÇÃO CONCISA
     # =========================================================================
     cells.append(nbf.v4.new_markdown_cell(r"""---
-## 2. Questão 2 — Filtragem e Compressão no Domínio da Frequência (FFT)
+## 2. Questão 2, Filtragem e Compressão no Domínio da Frequência (FFT)
 
 ### 2.1 Metodologia do Domínio da Frequência
 Conforme orientado no enunciado, o pipeline de filtragem segue 7 etapas:
 1. Obtenção da imagem em escala de cinza;
-2. Transformada Rápida de Fourier 2D (`np.fft.fft2`);
-3. Centralização da frequência zero via `np.fft.fftshift`;
-4. Construção das máscaras circulares baseadas na distância euclidiana $D(u, v)$ ao centro;
+2. Transformada Rápida de Fourier 2D;
+3. Centralização da frequência zero via np.fft.fftshift;
+4. Construção das máscaras circulares baseadas na distância euclidiana D(u, v) ao centro;
 5. Multiplicação pontual $G(u, v) = F(u, v) \cdot H(u, v)$;
-6. Transformada Inversa (`np.fft.ifftshift` + `np.fft.ifft2`);
+6. Transformada Inversa np.fft.ifftshift + np.fft.ifft2);
 7. Análise dos resultados e das imagens recuperadas.
 """))
 
@@ -264,7 +309,6 @@ Conforme orientado no enunciado, o pipeline de filtragem segue 7 etapas:
     cells.append(nbf.v4.new_code_cell("""# 2.1 Pipeline de Filtragem no Domínio da Frequência
 
 def create_circular_mask(shape: tuple[int, int], filter_type: str, d0: float, width: float = 30.0) -> np.ndarray:
-    \"\"\"Gera as máscaras analíticas ideais para o domínio de frequência.\"\"\"
     M, N = shape
     u, v = np.ogrid[:M, :N]
     D = np.sqrt((u - M / 2.0)**2 + (v - N / 2.0)**2)
@@ -280,7 +324,6 @@ def create_circular_mask(shape: tuple[int, int], filter_type: str, d0: float, wi
     raise ValueError(f"Filtro desconhecido: {filter_type}")
 
 def apply_fft_filter(img: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    \"\"\"Aplica a máscara no espectro centralizado e retorna a imagem reconstruída e o espectro filtrado.\"\"\"
     F = np.fft.fft2(img.astype(np.float64))
     F_shift = np.fft.fftshift(F)
     G_shift = F_shift * mask
@@ -299,7 +342,6 @@ F_shift = np.fft.fftshift(F)
 spectrum_log = np.log(1.0 + np.abs(F_shift))
 img_reconstructed = np.clip(np.round(np.real(np.fft.ifft2(F))), 0, 255).astype(np.uint8)
 
-# Parâmetros dos núcleos
 d0_lp, d0_hp, d0_bp, w_bp = 50.0, 30.0, 60.0, 30.0
 filter_types = ['passa-baixa', 'passa-alta', 'passa-faixa', 'rejeita-faixa']
 masks = [
@@ -312,12 +354,10 @@ masks = [
 filtered_imgs = []
 for m, t in zip(masks, filter_types):
     img_filt, _ = apply_fft_filter(img_cake1, m)
-    # Para passa-alta e passa-faixa, reforçamos contraste para visualização das bordas
     if t in ['passa-alta', 'passa-faixa']:
         img_filt = np.clip(img_filt.astype(float) * 2.5, 0, 255).astype(np.uint8)
     filtered_imgs.append(img_filt)
 
-# Painel estruturado exatamente conforme o layout do PDF
 fig = plt.figure(figsize=(16, 12))
 gs = fig.add_gridspec(3, 4, height_ratios=[1, 1, 1], hspace=0.25, wspace=0.15)
 
@@ -351,7 +391,7 @@ for i, (img_f, name) in enumerate(zip(filtered_imgs, filter_types)):
     ax.set_title(f"imagem após\\nfiltragem {name}", fontsize=10)
     ax.axis('off')
 
-plt.suptitle(f"Filtragem no Domínio da Frequência — {__IMG1_TITLE__}", fontsize=13, fontweight='bold', y=0.98)
+plt.suptitle(f"Filtragem no Domínio da Frequência, {__IMG1_TITLE__}", fontsize=13, fontweight='bold', y=0.98)
 plt.show()
 """)))
 
@@ -368,21 +408,21 @@ u, v = np.ogrid[:M, :N]
 D = np.sqrt((u - M / 2.0)**2 + (v - N / 2.0)**2)
 
 for i, d0 in enumerate(radii):
-    # Linha 1: Filtro Ideal Passa-Baixa (transição abrupta -> anelamento evidente)
+    # Linha 1: Filtro Ideal Passa-Baixa
     mask_ideal_lp = (D <= d0).astype(np.float64)
     img_ideal_lp, _ = apply_fft_filter(img_cake1, mask_ideal_lp)
     axes[0, i].imshow(img_ideal_lp, cmap='gray')
     axes[0, i].set_title(f"Passa-Baixa Ideal (D0 = {d0})\\nAnelamento Evidente", fontsize=9, fontweight='bold')
     axes[0, i].axis('off')
     
-    # Linha 2: Filtro Butterworth Passa-Baixa (ordem 2 -> transição suave, sem anelamento)
+    # Linha 2: Filtro Butterworth Passa-Baixa
     mask_butter = 1.0 / (1.0 + (D / (d0 + 1e-8))**4)
     img_butter, _ = apply_fft_filter(img_cake1, mask_butter)
     axes[1, i].imshow(img_butter, cmap='gray')
     axes[1, i].set_title(f"Passa-Baixa Butterworth (D0 = {d0})\\nTransição Suave (Sem Ringing)", fontsize=9, fontweight='bold')
     axes[1, i].axis('off')
 
-    # Linha 3: Filtro Ideal Passa-Alta (análise de raio nos detalhes)
+    # Linha 3: Filtro Ideal Passa-Alta
     mask_ideal_hp = (D > d0).astype(np.float64)
     img_ideal_hp, _ = apply_fft_filter(img_cake1, mask_ideal_hp)
     img_hp_disp = np.clip(img_ideal_hp.astype(float) * 2.5, 0, 255).astype(np.uint8)
@@ -401,12 +441,10 @@ plt.show()
     cells.append(nbf.v4.new_code_cell(custom_code("""# 2.4 Compressão por Eliminação de Coeficientes de Fourier e Histogramas
 
 def compress_fourier(image: np.ndarray, keep_percent: float = 5.0):
-    \"\"\"Comprime a imagem mantendo apenas os maiores coeficientes de Fourier em magnitude.\"\"\"
     F = np.fft.fft2(image.astype(np.float64))
     mags = np.abs(F)
     threshold = np.percentile(mags, 100.0 - keep_percent)
     
-    # Eliminação de coeficientes: atribui zero aos menores que o limiar
     F_comp = np.where(mags >= threshold, F, 0.0)
     reconstructed = np.clip(np.round(np.real(np.fft.ifft2(F_comp))), 0, 255).astype(np.uint8)
     
@@ -414,11 +452,8 @@ def compress_fourier(image: np.ndarray, keep_percent: float = 5.0):
     psnr = 10.0 * np.log10((255.0**2) / (mse + 1e-10))
     return reconstructed, 100.0 - keep_percent, psnr
 
-# Executa a compressão eliminando 95% dos coeficientes (preserva os 5% maiores)
 img_comp, sparsity, psnr = compress_fourier(img_cake1, keep_percent=5.0)
 
-# Layout fiel à figura de referência do PDF:
-# Imagem Comprimida à esquerda e os dois histogramas (Original e Comprimido) alinhados
 fig = plt.figure(figsize=(15, 4.5))
 gs = fig.add_gridspec(1, 3, wspace=0.25)
 
@@ -428,7 +463,7 @@ ax0.imshow(img_comp, cmap='gray')
 ax0.set_title(f"imagem após compressão\\n({sparsity:.0f}% coeficientes zerados | PSNR: {psnr:.2f} dB)", fontsize=10, fontweight='bold')
 ax0.axis('off')
 
-# 2. Histograma Antes da Compressão (azul conforme figura do PDF)
+# 2. Histograma Antes da Compressão
 ax1 = fig.add_subplot(gs[0, 1])
 hist_orig, _ = np.histogram(img_cake1.flatten(), bins=256, range=[0, 256])
 ax1.bar(range(256), hist_orig, width=1.0, color='blue', edgecolor='blue')
@@ -438,7 +473,7 @@ ax1.set_ylabel("Frequência de Pixels", fontsize=9)
 ax1.set_xlim([0, 255])
 ax1.grid(True, alpha=0.3)
 
-# 3. Histograma Após a Compressão (azul conforme figura do PDF)
+# 3. Histograma Após a Compressão
 ax2 = fig.add_subplot(gs[0, 2])
 hist_comp, _ = np.histogram(img_comp.flatten(), bins=256, range=[0, 256])
 ax2.bar(range(256), hist_comp, width=1.0, color='blue', edgecolor='blue')
@@ -457,26 +492,14 @@ plt.show()
     # =========================================================================
     cells.append(nbf.v4.new_markdown_cell(r"""### 2.5 Interpretação dos Resultados no Domínio da Frequência
 
-1. **Espectro e Centralização:** O deslocamento (`fftshift`) centraliza a frequência zero (nível DC, brilho médio). A energia decai do centro para as bordas; descontinuidades e detalhes espaciais traduzem-se em componentes de alta frequência radiais.
+1. **Espectro e Centralização:** O deslocamento fftshift centraliza a frequência zero (nível DC, brilho médio). A energia decai do centro para as bordas; descontinuidades e detalhes espaciais traduzem-se em componentes de alta frequência radiais.
 2. **Efeitos dos Filtros e Variação de Núcleos ($D_0$):**
-   - **Passa-Baixa:** Quanto menor o raio $D_0$, maior o borramento. Em filtros ideais, o corte em degrau gera ondulações espúrias concêntricas (**efeito de anelamento / *ringing artifacts***). O filtro de Butterworth (ordem 2) realiza transição suave, eliminando esse artefato.
-   - **Passa-Alta:** Quanto maior o raio $D_0$, mais restrito é o filtro, deixando passar apenas microdetalhes e arestas finas.
-   - **Passa-Faixa e Rejeita-Faixa:** Permitem isolar ou atenuar texturas com frequências espaciais específicas contidas na coroa circular $[D_0 - W/2, D_0 + W/2]$.
+   - **Passa-Baixa:** Quanto menor o raio D0, maior o borramento. Em filtros ideais, o corte em degrau gera ondulações espúrias concêntricas (efeito de anelamento / ringing). O filtro de Butterworth (ordem 2) realiza transição suave, eliminando esse artefato.
+   - **Passa-Alta:** Quanto maior o raio D0, mais restrito é o filtro, deixando passar apenas microdetalhes e arestas finas.
+   - **Passa-Faixa e Rejeita-Faixa:** Permitem isolar ou atenuar texturas com frequências espaciais específicas contidas na coroa circular [D0 - W/2, D0 + W/2].
 3. **Compressão por Limiarização de Coeficientes:**
-   - Com **$95\%$ dos coeficientes de Fourier zerados** (preservando apenas os $5\%$ de maior magnitude), a imagem reconstruída mantém a nitidez visual e a estrutura geométrica do bolo com alto índice de fidelidade ($\text{PSNR} > 30\text{ dB}$).
+   - Com 95\% dos coeficientes de Fourier zerados (preservando apenas os 5\% de maior magnitude), a imagem reconstruída mantém a nitidez visual e a estrutura geométrica do bolo com alto índice de fidelidade (PSNR > 30dB).
    - **Comparação dos Histogramas:** O histograma pós-compressão preserva fielmente a distribuição bimodal da cena original (bolo vs. fundo), apresentando apenas uma leve difusão dos picos de intensidade pela ausência das microvariações de alta frequência descartadas.
-"""))
-
-    # =========================================================================
-    # CONCLUSÃO OBJETIVA
-    # =========================================================================
-    cells.append(nbf.v4.new_markdown_cell("""---
-## 3. Conclusão
-
-Todas as operações solicitadas na Atividade 2 foram implementadas de maneira manual via NumPy, respeitando os critérios:
-* Os **11 filtros espaciais** ($h_1$ a $h_{11}$) foram aplicados via convolução 2D manual com padding reflexivo e normalização dinâmica de intensidade.
-* As transformações no **domínio da frequência** foram aplicadas via FFT 2D com centralização, máscaras analíticas dos 4 filtros (passa-baixa, passa-alta, passa-faixa e rejeita-faixa) e compressão com análise de histogramas.
-* Todos os testes foram conduzidos estritamente com dados do tema de gastronomia.
 """))
 
     nb.cells = cells
